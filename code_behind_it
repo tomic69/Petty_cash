@@ -1,0 +1,71 @@
+function sendEmailNotification(requestAmount) {
+  try {
+    // Set the recipient email, subject, and body of the email
+    var recipientEmail = "prince@zfwhospitality.com";
+    var subject = "New Petty Cash Requirement";
+    var body = "A new petty cash requirement has been submitted. Please review and take appropriate action.\n\n" +
+               "Requested Amount: " + requestAmount;
+
+    // Send the email
+    MailApp.sendEmail({
+      to: recipientEmail,
+      subject: subject,
+      body: body
+    });
+
+    // Log a message indicating that the email has been sent
+    Logger.log("Email sent to: " + recipientEmail);
+
+    // Add a text message in the spreadsheet itself to notify the editor that an email has been sent
+    var textMessageCell = sheet.getRange("J3");
+    textMessageCell.setValue("An email has been sent to relevant personnel.");
+
+    // Log a message indicating that the text message has been updated
+    Logger.log("Text message updated in cell J3.");
+  } catch (error) {
+    console.error("An error occurred while sending the email: ", error);
+  }
+}
+
+
+function onEdit(e) {
+  try {
+    // Get the edited range and column
+    var editedRange = e.range;
+    var editedColumn = editedRange.getColumn();
+    var editedRow = editedRange.getRow();
+
+    // Check if the edited column is E (column index 5) and the edited row is greater than or equal to 2
+    if (editedColumn === 5 && editedRow >= 2) {
+      var sheet = editedRange.getSheet();
+      var sheetName = sheet.getName();
+
+      // Check if the edited sheet matches the specified sheet name
+      if (sheetName === 'request_dashboard') {
+        // Get the old and new values of the edited cell
+        var oldValue = e.oldValue;
+        var newValue = e.value;
+
+        // Check if the cell has been edited and the new value is not empty
+        if (oldValue !== newValue && newValue !== '') {
+          // Get the data validation rules for the edited cell
+          var dataValidation = editedRange.getDataValidation();
+
+          // Check if the data validation allows values from a list
+          if (dataValidation != null && dataValidation.getCriteriaType() === SpreadsheetApp.DataValidationCriteria.VALUE_IN_LIST) {
+            // Get the corresponding value in column C
+            var requestAmount = sheet.getRange("C" + editedRow).getValue();
+
+            // Check if the cell is a new entry in column E
+            if (oldValue === '') {
+              // Call the function to send the email notification
+              sendEmailNotification({ requestAmount: requestAmount });
+            }
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error("An error occurred while processing the edit: ", error);
+  }
+}
